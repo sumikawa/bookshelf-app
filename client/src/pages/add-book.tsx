@@ -15,8 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { insertBookSchema, type InsertBook } from "@shared/schema";
-import { apiRequest } from "@/lib/queryClient";
-import { queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useState } from "react";
 
 export default function AddBook() {
@@ -33,19 +32,21 @@ export default function AddBook() {
       isbn: "",
       genre: "",
       amazonUrl: "",
+      userId: 1, // Mock user ID for demo
     },
   });
 
-  const { mutate, isPending } = useMutation({
+  const { mutate: submitForm, isPending } = useMutation({
     mutationFn: async (data: InsertBook) => {
-      await apiRequest("POST", "/api/books", data);
+      const response = await apiRequest("POST", "/api/books", data);
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/books"] });
       toast({ title: "Success", description: "Book added successfully" });
       navigate("/");
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
         description: error.message,
@@ -82,6 +83,10 @@ export default function AddBook() {
     }
   };
 
+  const onSubmit = (data: InsertBook) => {
+    submitForm(data);
+  };
+
   return (
     <div className="container mx-auto py-6 px-4">
       <Card className="max-w-2xl mx-auto">
@@ -90,7 +95,7 @@ export default function AddBook() {
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit((data) => mutate(data))} className="space-y-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
                 control={form.control}
                 name="amazonUrl"
