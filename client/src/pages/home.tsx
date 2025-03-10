@@ -9,14 +9,18 @@ import { useState } from "react";
 
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
-  
+
   const { data: books, isLoading } = useQuery<Book[]>({
     queryKey: searchQuery ? ["/api/books/search", searchQuery] : ["/api/books"],
     queryFn: async ({ queryKey }) => {
       const url = searchQuery 
-        ? `${queryKey[0]}?q=${encodeURIComponent(searchQuery)}`
-        : queryKey[0];
-      return fetch(url).then(r => r.json());
+        ? `${queryKey[0] as string}?q=${encodeURIComponent(searchQuery)}`
+        : queryKey[0] as string;
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error('Failed to fetch books');
+      }
+      return response.json();
     }
   });
 

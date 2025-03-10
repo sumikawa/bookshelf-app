@@ -28,7 +28,17 @@ export class MemStorage implements IStorage {
 
   async createBook(insertBook: InsertBook): Promise<Book> {
     const id = this.currentId++;
-    const book: Book = { ...insertBook, id };
+    const book: Book = {
+      id,
+      title: insertBook.title,
+      author: insertBook.author,
+      cover: insertBook.cover,
+      userId: insertBook.userId,
+      isbn: insertBook.isbn || null,
+      publishedYear: insertBook.publishedYear || null,
+      genre: insertBook.genre || null,
+      amazonUrl: insertBook.amazonUrl || null
+    };
     this.books.set(id, book);
     return book;
   }
@@ -36,8 +46,15 @@ export class MemStorage implements IStorage {
   async updateBook(id: number, update: Partial<InsertBook>): Promise<Book> {
     const existing = this.books.get(id);
     if (!existing) throw new Error("Book not found");
-    
-    const updated = { ...existing, ...update };
+
+    const updated = { 
+      ...existing,
+      ...update,
+      isbn: update.isbn || existing.isbn,
+      publishedYear: update.publishedYear || existing.publishedYear,
+      genre: update.genre || existing.genre,
+      amazonUrl: update.amazonUrl || existing.amazonUrl
+    };
     this.books.set(id, updated);
     return updated;
   }

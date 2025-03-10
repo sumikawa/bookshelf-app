@@ -30,6 +30,7 @@ export default function AddBook() {
       author: "",
       cover: "",
       isbn: "",
+      publishedYear: undefined,
       genre: "",
       amazonUrl: "",
       userId: 1, // Mock user ID for demo
@@ -61,23 +62,37 @@ export default function AddBook() {
     try {
       setIsLoading(true);
       const response = await fetch(`/api/books/fetch-amazon?url=${encodeURIComponent(url)}`);
-      if (!response.ok) throw new Error("Failed to fetch book details");
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to fetch book details");
+      }
 
       const bookDetails = await response.json();
-      form.setValue("title", bookDetails.title);
-      form.setValue("author", bookDetails.author);
-      form.setValue("cover", bookDetails.cover);
-      form.setValue("isbn", bookDetails.isbn);
+
+      // Update form fields with fetched data
+      form.setValue("title", bookDetails.title, { shouldValidate: true });
+      form.setValue("author", bookDetails.author, { shouldValidate: true });
+      form.setValue("cover", bookDetails.cover, { shouldValidate: true });
+      form.setValue("isbn", bookDetails.isbn || "", { shouldValidate: true });
       if (bookDetails.publishedYear) {
-        form.setValue("publishedYear", bookDetails.publishedYear);
+        form.setValue("publishedYear", bookDetails.publishedYear, { shouldValidate: true });
       }
-      toast({ title: "Info", description: "Book details fetched from Amazon" });
+      if (bookDetails.genre) {
+        form.setValue("genre", bookDetails.genre, { shouldValidate: true });
+      }
+
+      toast({ 
+        title: "Success", 
+        description: "書籍情報をAmazonから取得しました。"
+      });
     } catch (error) {
       toast({
         title: "Warning",
-        description: "Could not fetch book details. Please fill in manually.",
+        description: error instanceof Error ? error.message : "書籍情報の取得に失敗しました。手動で入力してください。",
         variant: "destructive",
       });
+      // Clear the Amazon URL field on error
+      form.setValue("amazonUrl", "");
     } finally {
       setIsLoading(false);
     }
@@ -167,6 +182,28 @@ export default function AddBook() {
                     <FormLabel>ISBN (Optional)</FormLabel>
                     <FormControl>
                       <Input {...field} disabled={isLoading} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="publishedYear"
+                render={({ field: { value, onChange, ...field } }) => (
+                  <FormItem>
+                    <FormLabel>出版年 (Optional)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        {...field}
+                        type="number"
+                        value={value || ""}
+                        onChange={e => onChange(e.target.value ? Number(e.target.value) : undefined)}
+                        disabled={isLoading}
+                        min={1000}
+                        max={new Date().getFullYear()}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

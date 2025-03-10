@@ -4,9 +4,34 @@ import { storage } from "./storage";
 import { insertBookSchema } from "@shared/schema";
 import { z } from "zod";
 
+// AmazonのAPIクライアントを初期化する関数
+async function createApiClient() {
+  try {
+    const { ProductAdvertisingAPIv3 } = await import('paapi5-nodejs-sdk');
+    if (!process.env.AMAZON_ACCESS_KEY) return null;
+
+    return new ProductAdvertisingAPIv3({
+      accessKey: process.env.AMAZON_ACCESS_KEY,
+      secretKey: process.env.AMAZON_SECRET_KEY,
+      partnerTag: process.env.AMAZON_PARTNER_TAG,
+      partnerType: 'Associates',
+      host: 'webservices.amazon.co.jp',
+      region: 'us-west-2',
+    });
+  } catch (error) {
+    console.error('Failed to initialize Amazon API client:', error);
+    return null;
+  }
+}
+
+let apiClient = null;
+createApiClient().then(client => {
+  apiClient = client;
+});
+
 async function fetchAmazonBookDetails(url: string) {
   try {
-    // Extract ASIN/ISBN from URL
+    // Extract ASIN from URL
     const asinMatch = url.match(/\/dp\/([A-Z0-9]{10})/);
     const asin = asinMatch?.[1];
 
@@ -14,18 +39,52 @@ async function fetchAmazonBookDetails(url: string) {
       throw new Error("Invalid Amazon URL");
     }
 
-    // For now, return mock data
-    // In a real implementation, you would need to use Amazon's Product Advertising API
-    // or scrape the page (following Amazon's terms of service)
+    // APIクライアントが利用できない場合はモックデータを返す
+    if (!apiClient) {
+      return {
+        title: "モックデータ: サンプルブック",
+        author: "サンプル著者",
+        cover: "https://via.placeholder.com/300x400",
+        isbn: asin,
+        publishedYear: new Date().getFullYear(),
+        genre: "サンプルジャンル"
+      };
+    }
+
+    const request = {
+      ItemIds: [asin],
+      Resources: [
+        'ItemInfo.Title',
+        'ItemInfo.ByLineInfo',
+        'ItemInfo.ContentInfo',
+        'Images.Primary.Large',
+        'ItemInfo.Classifications',
+      ],
+      Condition: "New",
+      PartnerTag: process.env.AMAZON_PARTNER_TAG,
+      PartnerType: "Associates",
+      Marketplace: "www.amazon.co.jp"
+    };
+
+    const response = await apiClient.getItems(request);
+
+    if (!response.ItemsResult?.Items?.[0]) {
+      throw new Error("Book not found");
+    }
+
+    const item = response.ItemsResult.Items[0];
+
     return {
-      title: "Sample Book Title",
-      author: "Sample Author",
-      cover: "https://via.placeholder.com/300x400",
+      title: item.ItemInfo?.Title?.DisplayValue || "",
+      author: item.ItemInfo?.ByLineInfo?.Contributors?.[0]?.Name || "",
+      cover: item.Images?.Primary?.Large?.URL || "",
       isbn: asin,
-      publishedYear: new Date().getFullYear()
+      publishedYear: item.ItemInfo?.ContentInfo?.PublicationDate?.Year,
+      genre: item.ItemInfo?.Classifications?.ProductGroup?.DisplayValue
     };
   } catch (error) {
-    throw new Error("Failed to fetch book details");
+    console.error('Amazon API Error:', error);
+    throw new Error(error instanceof Error ? error.message : "Failed to fetch book details");
   }
 }
 
