@@ -10,7 +10,8 @@ export const books = pgTable("books", {
   userId: integer("user_id").notNull(),
   isbn: text("isbn"),
   publishedYear: integer("published_year"),
-  genre: text("genre")
+  genre: text("genre"),
+  amazonUrl: text("amazon_url")
 });
 
 export const insertBookSchema = createInsertSchema(books)
@@ -21,7 +22,8 @@ export const insertBookSchema = createInsertSchema(books)
     cover: z.string().min(1, "Cover URL is required"),
     isbn: z.string().optional(),
     publishedYear: z.number().min(1000).max(new Date().getFullYear()).optional(),
-    genre: z.string().optional()
+    genre: z.string().optional(),
+    amazonUrl: z.string().url("Invalid URL").optional()
   });
 
 export type InsertBook = z.infer<typeof insertBookSchema>;

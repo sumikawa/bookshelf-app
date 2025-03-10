@@ -17,10 +17,12 @@ import { useToast } from "@/hooks/use-toast";
 import { insertBookSchema, type InsertBook } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
+import { useState } from "react";
 
 export default function AddBook() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<InsertBook>({
     resolver: zodResolver(insertBookSchema),
@@ -30,6 +32,7 @@ export default function AddBook() {
       cover: "",
       isbn: "",
       genre: "",
+      amazonUrl: "",
     },
   });
 
@@ -51,6 +54,34 @@ export default function AddBook() {
     },
   });
 
+  const handleAmazonUrlChange = async (url: string) => {
+    if (!url) return;
+
+    try {
+      setIsLoading(true);
+      const response = await fetch(`/api/books/fetch-amazon?url=${encodeURIComponent(url)}`);
+      if (!response.ok) throw new Error("Failed to fetch book details");
+
+      const bookDetails = await response.json();
+      form.setValue("title", bookDetails.title);
+      form.setValue("author", bookDetails.author);
+      form.setValue("cover", bookDetails.cover);
+      form.setValue("isbn", bookDetails.isbn);
+      if (bookDetails.publishedYear) {
+        form.setValue("publishedYear", bookDetails.publishedYear);
+      }
+      toast({ title: "Info", description: "Book details fetched from Amazon" });
+    } catch (error) {
+      toast({
+        title: "Warning",
+        description: "Could not fetch book details. Please fill in manually.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="container mx-auto py-6 px-4">
       <Card className="max-w-2xl mx-auto">
@@ -62,18 +93,39 @@ export default function AddBook() {
             <form onSubmit={form.handleSubmit((data) => mutate(data))} className="space-y-4">
               <FormField
                 control={form.control}
-                name="title"
+                name="amazonUrl"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Title</FormLabel>
+                    <FormLabel>Amazon URL (Optional)</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input 
+                        {...field} 
+                        placeholder="https://www.amazon.co.jp/dp/..."
+                        onChange={(e) => {
+                          field.onChange(e);
+                          handleAmazonUrlChange(e.target.value);
+                        }}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              
+
+              <FormField
+                control={form.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Title</FormLabel>
+                    <FormControl>
+                      <Input {...field} disabled={isLoading} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <FormField
                 control={form.control}
                 name="author"
@@ -81,7 +133,7 @@ export default function AddBook() {
                   <FormItem>
                     <FormLabel>Author</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input {...field} disabled={isLoading} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -95,7 +147,7 @@ export default function AddBook() {
                   <FormItem>
                     <FormLabel>Cover Image URL</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input {...field} disabled={isLoading} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -109,7 +161,7 @@ export default function AddBook() {
                   <FormItem>
                     <FormLabel>ISBN (Optional)</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input {...field} disabled={isLoading} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -123,7 +175,7 @@ export default function AddBook() {
                   <FormItem>
                     <FormLabel>Genre (Optional)</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input {...field} disabled={isLoading} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -134,7 +186,7 @@ export default function AddBook() {
                 <Button variant="outline" onClick={() => navigate("/")}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isPending}>
+                <Button type="submit" disabled={isPending || isLoading}>
                   {isPending ? "Adding..." : "Add Book"}
                 </Button>
               </div>
