@@ -78,6 +78,8 @@
 
 ## セットアップ
 
+### 方法1: ローカル環境での実行
+
 1. リポジトリのクローン
 ```bash
 git clone https://github.com/sumikawa/bookshelf-app.git
@@ -90,18 +92,33 @@ npm install
 ```
 
 3. 環境変数の設定
-以下の環境変数を`.env`ファイルに設定してください：
-
-```env
-# Amazon Product Advertising API credentials
-AMAZON_ACCESS_KEY=your_access_key
-AMAZON_SECRET_KEY=your_secret_key
-AMAZON_PARTNER_TAG=your_partner_tag
+`.env.example`を`.env`にコピーして必要な環境変数を設定：
+```bash
+cp .env.example .env
 ```
 
 4. アプリケーションの起動
 ```bash
 npm run dev
+```
+
+### 方法2: Dockerを使用した実行
+
+1. リポジトリのクローン
+```bash
+git clone https://github.com/sumikawa/bookshelf-app.git
+cd bookshelf-app
+```
+
+2. 環境変数の設定
+```bash
+cp .env.example .env
+```
+必要に応じて`.env`ファイルを編集し、Amazon APIの認証情報を設定してください。
+
+3. Dockerコンテナのビルドと起動
+```bash
+docker-compose up --build
 ```
 
 アプリケーションは http://localhost:5000 で起動します。
